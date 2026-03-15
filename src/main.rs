@@ -10,11 +10,16 @@ use std::io::{self, Write};
 async fn main() {
     let args = args::Args::parse();
 
-    // Resolve token ID: CLI arg takes priority, otherwise prompt interactively
+    // Resolve token ID / coin: CLI arg takes priority, otherwise prompt interactively
     let token_id = match args.token_id {
         Some(id) => id,
         None => {
-            print!("{} ", "Input token id:".bright_cyan().bold());
+            let prompt = match args.market.to_lowercase().as_str() {
+                "hyperliquid" | "hl" => "Input coin (e.g. BTC):",
+                "pendle" | "pdl" => "Input market address (e.g. 42161:0x...):",
+                _ => "Input token id:",
+            };
+            print!("{} ", prompt.bright_cyan().bold());
             io::stdout().flush().unwrap();
             let mut input = String::new();
             io::stdin().read_line(&mut input).unwrap();
@@ -31,7 +36,13 @@ async fn main() {
         // Always clear and redraw from the top so the UI stays in place
         let clear = args.refresh > 0;
 
-        match data::polymarket::fetch_orderbook(&token_id, args.staging).await {
+        let result = match args.market.to_lowercase().as_str() {
+            "hyperliquid" | "hl" => data::hyperliquid::fetch_orderbook(&token_id).await,
+            "pendle" | "pdl" => data::pendle::fetch_orderbook(&token_id).await,
+            _ => data::polymarket::fetch_orderbook(&token_id, args.staging).await,
+        };
+
+        match result {
             Ok(book) => display::render(&book, &args.market, args.levels, clear),
             Err(e) => {
                 if clear {

@@ -1,6 +1,6 @@
 use colored::*;
 
-use crate::data::polymarket::OrderBook;
+use crate::data::OrderBook;
 
 const WIDTH: usize = 58;
 

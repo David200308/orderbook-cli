@@ -5,11 +5,11 @@ use clap::Parser;
 #[command(about = "Order book CLI viewer")]
 #[command(long_about = "Fetches and displays the order book for a given market and token ID.")]
 pub struct Args {
-    /// Market to display (e.g. polymarket)
+    /// Market to display: polymarket, hyperliquid (alias: hl), pendle (alias: pdl)
     #[arg(long, default_value = "polymarket")]
     pub market: String,
 
-    /// Polymarket token ID / asset ID (only used with --market polymarket; prompted if omitted)
+    /// Token ID / coin symbol (e.g. Polymarket token ID or "BTC" for Hyperliquid; prompted if omitted)
     #[arg(long = "tokenId")]
     pub token_id: Option<String>,
 

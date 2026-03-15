@@ -1,13 +1,9 @@
 use serde::Deserialize;
 use serde_json::Value;
 
-// ─── Response types ──────────────────────────────────────────
+use super::{OrderBook, OrderLevel};
 
-#[derive(Deserialize, Debug)]
-pub struct OrderLevel {
-    pub price: String,
-    pub size: String,
-}
+// ─── Internal deserialization types ──────────────────────────
 
 fn any_to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
@@ -22,13 +18,19 @@ where
 }
 
 #[derive(Deserialize, Debug)]
-pub struct OrderBook {
+struct RawOrderLevel {
+    pub price: String,
+    pub size: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct RawOrderBook {
     pub market: String,
     pub asset_id: String,
     #[serde(deserialize_with = "any_to_string")]
     pub timestamp: String,
-    pub bids: Vec<OrderLevel>,
-    pub asks: Vec<OrderLevel>,
+    pub bids: Vec<RawOrderLevel>,
+    pub asks: Vec<RawOrderLevel>,
     #[serde(default)]
     pub min_order_size: Option<String>,
     #[serde(default)]
@@ -51,5 +53,16 @@ pub async fn fetch_orderbook(
     let base = if staging { STAGING_URL } else { PROD_URL };
     let url = format!("{}/book?token_id={}", base, token_id);
     let resp = reqwest::get(&url).await?.error_for_status()?;
-    Ok(resp.json::<OrderBook>().await?)
+    let raw = resp.json::<RawOrderBook>().await?;
+    Ok(OrderBook {
+        market: raw.market,
+        asset_id: raw.asset_id,
+        timestamp: raw.timestamp,
+        bids: raw.bids.into_iter().map(|o| OrderLevel { price: o.price, size: o.size }).collect(),
+        asks: raw.asks.into_iter().map(|o| OrderLevel { price: o.price, size: o.size }).collect(),
+        min_order_size: raw.min_order_size,
+        tick_size: raw.tick_size,
+        neg_risk: raw.neg_risk,
+        last_trade_price: raw.last_trade_price,
+    })
 }
